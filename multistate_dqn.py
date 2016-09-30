@@ -61,8 +61,8 @@ class DeepQNet:
         s_dash = state_dash.reshape((state.shape[0], reduce(lambda x, y: x*y, state.shape[1:]))).astype(np.float32)
         q = self.model.q_function(s)
 
-        q_dash = self.model_target.q_function(s_dash) # Q(s',*)
-        max_q_dash = q_dash.data.max(axis=1) # max_a Q(s',a)
+        q_dash = self.model_target.q_function(s_dash)  # Q(s',*)
+        max_q_dash = np.asarray(list(map(np.max, q_dash.data)), dtype=np.float32) # max_a Q(s',a)
 
         target = q.data.copy()
         for i in range(self.replay_batch_size):
@@ -78,31 +78,6 @@ class DeepQNet:
         loss = F.sum(F.huber_loss(Variable(target), q, delta=1.0)) #/ self.replay_batch_size
         return loss, q
 
-    def calc_loss_recurrent(self, state, state_dash, actions, rewards, done_list):
-        frames = F.swapaxes(state, 0, 1) # (Batch, FrameNum, FrameData) -> (FrameNum, Batch, FrameData)
-        frames_dash = F.swapaxes(state_dash, 0, 1) # same here
-        for f in range(0, self.image_num_per_state-1):
-            self.model.q_function(frames[f])
-            self.model.q_function(frames[f])
-        q = self.model.q_function(frames[-1])
-        q_dash = self.model_target.q_function(frames[-1])  # Q(s',*): shape is (batch_size, action_num)
-        max_q_dash = q_dash.data.max(axis=1) # max_a Q(s',a): shape is (batch_size,)
-
-        target = q.data.copy()
-        for i in range(self.replay_batch_size):
-            assert(self.replay_batch_size == len(done_list))
-            r = np.sign(rewards[i]) if self.clipping else rewards[i]
-            if done_list[i]:
-                discounted_sum = r
-            else:
-                discounted_sum = r + self.gamma * max_q_dash[i]
-            assert(self.replay_batch_size == len(actions))
-            target[i, actions[i]] = discounted_sum
-
-        loss = F.sum(F.huber_loss(Variable(target), q, delta=1.0)) #/ self.replay_batch_size
-        return loss, q
-
-        """
     def calc_loss_recurrent(self, frames, actions, rewards, done_list, size_list):
         # TODO self.max_step -> max_step
         s = Variable(frames.astype(np.float32))
@@ -141,22 +116,9 @@ class DeepQNet:
         #print("loss", loss.data)
 
         return loss
-        """
 
     def experience_replay(self):
         if self.model.is_reccurent():
-            self.model.push_state() # Save current episode state
-            state, state_dash, actions, rewards, done_list = \
-                    self.dataset.extract_batch(self.replay_batch_size, self.image_num_per_state)
-            state = cuda.to_gpu(state)
-            state_dash = cuda.to_gpu(state_dash)
-            self.optimizer.zero_grads()
-            loss = self.calc_loss_recurrent(state, state_dash, actions, rewards, done_list)
-            loss.backward()
-            self.optimizer.update()
-            self.model.pop_state() # Load current episode state
-
-            """
             self.model.push_state() # Save current state
             replay_episodes = self.dataset.extract_episodes(self.replay_batch_size)
             frame_shape = replay_episodes[0].frame_shape
@@ -185,7 +147,6 @@ class DeepQNet:
             #print("loss grad is", loss.grad)
             self.optimizer.update()
             self.model.pop_state() # Load current state
-            """
         else: # normal DQN
             state, state_dash, actions, rewards, done_list = \
                     self.dataset.extract_batch(self.replay_batch_size, self.image_num_per_state)
