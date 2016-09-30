@@ -306,7 +306,7 @@ def main():
             if args.validation:
                 assert(not "!!!")
             else:
-                if episode_id%100 == 0:
+                if episode_id%100 == 0 and episode_id != 0:
                     ## Run test
                     mode = run_mode.test
                     for j in range(10):
