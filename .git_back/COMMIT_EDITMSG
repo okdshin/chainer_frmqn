@@ -1,0 +1,53 @@
+add files
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+# On branch blockinput
+# Changes to be committed:
+#	new file:   0926run_all_5.sh
+#	new file:   0927run_test.sh
+#	new file:   batch_size8.sh
+#	new file:   run_test.sh
+#
+# Untracked files:
+#	0921i_maze_rogue_dqn_gpu1/
+#	0921i_maze_rogue_dqn_gpu3/
+#	0921i_maze_rogue_drqn_gpu1/
+#	0921i_maze_rogue_drqn_gpu2/
+#	0921i_maze_rogue_drqn_gpu3/
+#	0921i_maze_rogue_frmqn_gpu1/
+#	0921i_maze_rogue_frmqn_gpu2/
+#	0921i_maze_rogue_frmqn_gpu3/
+#	0921i_maze_rogue_mqn_gpu1/
+#	0921i_maze_rogue_mqn_gpu2/
+#	0921i_maze_rogue_mqn_gpu3/
+#	0921i_maze_rogue_rmqn_gpu1/
+#	0921i_maze_rogue_rmqn_gpu2/
+#	0921i_maze_rogue_rmqn_gpu3/
+#	0921plot_batch8_test.plt
+#	0921plot_batch8_train.plt
+#	0921plot_freq4_test.plt
+#	0921plot_freq4_train.plt
+#	0921plot_freq50_test.plt
+#	0921plot_freq50_train.plt
+#	0926i_maze_rogue_dqn/
+#	0926i_maze_rogue_drqn/
+#	0926i_maze_rogue_frmqn/
+#	0926i_maze_rogue_mqn/
+#	0926i_maze_rogue_rmqn/
+#	0927dqn_validation/
+#	0927drqn_validation/
+#	0927frmqn_validation/
+#	0927frmqn_validation50/
+#	0927mqn_validation/
+#	0927mqn_validation50/
+#	0927plot_validation.plt
+#	0927rmqn_validation/
+#	0927rmqn_validation50/
+#	__pycache__/
+#	core
+#	log/
+#	model/__init__.pyc
+#	model/__pycache__/
+#	model/dqn.pyc
+#	multistate_dqn.pyc
+#

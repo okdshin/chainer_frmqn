@@ -1,0 +1,6 @@
+0000000000000000000000000000000000000000 1bf19b204b3cf794a31341a98c8c8651c8369bea okdshin <kokuzen@gmail.com> 1474450929 +0900	clone: from /home/okdshin/memory_malmo
+1bf19b204b3cf794a31341a98c8c8651c8369bea eb9b9997c03e16dd87f7c617ab4557b1b7aeb3e1 okdshin <kokuzen@gmail.com> 1474618380 +0900	commit: fix
+eb9b9997c03e16dd87f7c617ab4557b1b7aeb3e1 f8104c42b5a5b9a266288f9682908da8a3281bb9 okdshin <kokuzen@gmail.com> 1474628040 +0900	commit: random batch
+f8104c42b5a5b9a266288f9682908da8a3281bb9 f8104c42b5a5b9a266288f9682908da8a3281bb9 okdshin <kokuzen@gmail.com> 1474980077 +0900	checkout: moving from master to blockinput
+f8104c42b5a5b9a266288f9682908da8a3281bb9 96fafbbba1731cdfaa5fea0fcdb383943004a563 okdshin <kokuzen@gmail.com> 1474980084 +0900	commit: block input
+96fafbbba1731cdfaa5fea0fcdb383943004a563 5abffbbfb140766d93a199e8696ee856fbd31506 okdshin <kokuzen@gmail.com> 1474980098 +0900	commit: add files
