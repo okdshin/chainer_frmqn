@@ -1,0 +1,5 @@
+python3 i_maze_rogue.py -y=1 -gpu=0 -modeltype=DQN -modelpath=./0926i_maze_rogue_dqn/2016-09-26-21:00:43.119614-i_maze_rogue_episode25000 -horizontal=1 -validation=1 -outdir=0927dqn_validation_batch32 -framehistnum 12 &
+python3 i_maze_rogue.py -y=1 -gpu=0 -modeltype=DRQN -modelpath=./0921i_maze_rogue_drqn_gpu3/2016-09-21-18:54:10.526306-i_maze_rogue_episode59900 -horizontal=1 -validation=1 -outdir=0927drqn_validation_batch32 -framehistnum 12 &
+python3 i_maze_rogue.py -y=1 -gpu=0 -modeltype=MQN -modelpath=./0921i_maze_rogue_mqn_gpu3/2016-09-21-18:54:10.498626-i_maze_rogue_episode59900 -horizontal=1 -validation=1 -outdir=0927mqn_validation_batch32_buffer50 -framehistnum 50 &
+python3 i_maze_rogue.py -y=1 -gpu=0 -modeltype=RMQN -modelpath=./0921i_maze_rogue_rmqn_gpu3/2016-09-21-18:54:10.506999-i_maze_rogue_episode59900 -horizontal=1 -validation=1 -outdir=0927rmqn_validation_batch32_buffer50 -framehistnum 50 &
+python3 i_maze_rogue.py -y=1 -gpu=0 -modeltype=FRMQN -modelpath=./0921i_maze_rogue_frmqn_gpu3/2016-09-21-18:54:10.498723-i_maze_rogue_episode59900 -horizontal=1 -validation=1 -outdir=0927frmqn_validation_batch32_buffer50 -framehistnum 50 &

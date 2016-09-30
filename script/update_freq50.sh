@@ -1,0 +1,4 @@
+yes | python i_maze_rogue.py -gpu=$1 -testoutput=1 -horizontal=1 -vertical=5 -testoutput=1 -modeltype=DRQN -updatefreq=50 -outdir=0921i_maze_rogue_drqn_gpu$1 > 0921i_maze_rogue_drqn_gpu$1/test_log.txt &
+yes | python i_maze_rogue.py -gpu=$1 -testoutput=1 -horizontal=1 -vertical=5 -testoutput=1 -modeltype=MQN -updatefreq=50  -outdir=0921i_maze_rogue_mqn_gpu$1 > 0921i_maze_rogue_mqn_gpu$1/test_log.txt &
+yes | python i_maze_rogue.py -gpu=$1 -testoutput=1 -horizontal=1 -vertical=5 -testoutput=1 -modeltype=RMQN -updatefreq=50  -outdir=0921i_maze_rogue_rmqn_gpu$1 > 0921i_maze_rogue_rmqn_gpu$1/test_log.txt &
+yes | python i_maze_rogue.py -gpu=$1 -testoutput=1 -horizontal=1 -vertical=5 -testoutput=1 -modeltype=FRMQN -updatefreq=50 -outdir=0921i_maze_rogue_frmqn_gpu$1 > 0921i_maze_rogue_frmqn_gpu$1/test_log.txt &
