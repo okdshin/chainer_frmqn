@@ -21,14 +21,6 @@ class DataSet:
 
     def stock_current_episode(self):
         assert(self.current_episode.done_list[self.current_episode.size-1] == True)
-
-        """
-        # append dummy experience
-        self.stock_experience(frame=self.current_episode.frames[-1].fill(0.0), 
-                action=0, reward=0.0, done=False)
-        self.current_episode.size -= 1
-        """
-
         self.episodes.append(copy.deepcopy(self.current_episode))
         self.total_size += self.current_episode.size
         while self.total_size > self.max_size:

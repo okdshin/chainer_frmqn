@@ -1,0 +1,1 @@
+c++ -O3 -shared -fPIC -std=c++11 -I/usr/include/python3.5m -I/usr/include/python3.5m  -Wno-unused-result -Wsign-compare -Wunreachable-code -march=x86-64 -mtune=generic -O2 -pipe -fstack-protector-strong -DNDEBUG -g -fwrapv -O3 -Wall -Wstrict-prototypes -L/usr/lib -lpython3.5m -lpthread -ldl  -lutil -lm  -Xlinker -export-dynamic raytrace.cpp -o raytrace_cpp.so

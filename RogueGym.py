@@ -4,11 +4,19 @@ import copy
 import numpy as np
 import random
 
+import scipy.misc as sm
+import raytrace
+import raytrace_cpp
+
 directions = [np.asarray([-1, 0]), np.asarray([0, -1]), np.asarray([1, 0]), np.asarray([0, 1])]
 
 class Block:
-    def __init__(self, block_id=-1, indicator="?", name="unknown", movable=False):
+    def __init__(self,
+            block_id=-1, block_type="block", color=(100,0,100), indicator="?",
+            name="unknown", movable=False):
         self.block_id = block_id
+        self.block_type = block_type
+        self.color = color
         self.indicator = indicator
         self.name = name
         self.movable = movable
@@ -80,6 +88,81 @@ def map_to_ob(map_, pos, direction):
         block_id = map_.get_block(look+pos).block_id
         blocks.append(block_id)
     return blocks
+
+def map_to_image(size, map_, pos, yaw, pitch=-30):
+    block_triangles = []
+    block_colors = []
+    for y in range(map_.size[0]):
+        for x in range(map_.size[1]):
+            block = map_.get_block((y, x))
+            if block.name != "air":
+                triangles, colors = raytrace.block_to_triangles((x, y), block)
+                block_triangles.extend([tri.tolist() for tri in triangles])
+                block_colors.extend([list(c) for c in colors])
+            else:
+                #print("air")
+                pass
+    sky = 1000*np.asarray([
+            [(-1.0, 1.0, 0.0), (1.0, 1.0, 0.0), (-1.0, -1.0, 0.0)],
+            [(1.0, -1.0, 0.0), (-1.0, -1.0, 0.0), (1.0, 1.0, 0.0)],
+    ])+(0,0,1)
+    sky_colors = [[127, 127, 127], [127, 127, 127]]
+    block_triangles.extend(sky.tolist())
+    block_colors.extend(sky_colors)
+
+    ground = [
+        [[-100.0, 100.0, 0.0], [-100.0, -100.0, 0.0], [100.0, 100.0, 0.0]],
+        [[100.0, -100.0, 0.0], [100.0, 100.0, 0.0], [-100.0, -100.0, 0.0]],
+    ]
+    ground_colors = [[127, 127, 127], [127, 127, 127]]
+
+    block_triangles.extend(ground)
+    block_colors.extend(ground_colors)
+
+    #block_triangles = np.concatenate(block_triangles)
+    #print(block_triangles.shape)
+    print(pos)
+    image = raytrace_cpp.raytrace2(size[0], size[1],
+            [pos[1]+0.5,pos[0]+0.5,0.85],
+            20, yaw, pitch, block_triangles, block_colors)
+    return np.asarray(image).astype(np.uint8)
+
+def map_to_top_view_image(size, map_):
+    block_triangles = []
+    block_colors = []
+    for y in range(map_.size[0]):
+        for x in range(map_.size[1]):
+            block = map_.get_block((y, x))
+            if block.name != "air":
+                triangles, colors = raytrace.block_to_triangles((x, y), block)
+                block_triangles.extend([tri.tolist() for tri in triangles])
+                block_colors.extend([list(c) for c in colors])
+            else:
+                #print("air")
+                pass
+    sky = 1000*np.asarray([
+            [(-1.0, 1.0, 0.0), (1.0, 1.0, 0.0), (-1.0, -1.0, 0.0)],
+            [(1.0, -1.0, 0.0), (-1.0, -1.0, 0.0), (1.0, 1.0, 0.0)],
+    ])+(0,0,1)
+    sky_colors = [[127, 127, 127], [127, 127, 127]]
+    block_triangles.extend(sky.tolist())
+    block_colors.extend(sky_colors)
+
+    ground = [
+        [[-120.0, 120.0, 0.0], [-120.0, -120.0, 0.0], [120.0, 120.0, 0.0]],
+        [[500.0, -100.0, 0.0], [500.0, 100.0, 0.0], [-5000.0, -100.0, 0.0]],
+    ]
+    ground_colors = [[100, 100, 100], [100, 100, 100]]
+
+    block_triangles.extend(ground)
+    block_colors.extend(ground_colors)
+
+    #block_triangles = np.concatenate(block_triangles)
+    #print(block_triangles.shape)
+    image = raytrace_cpp.raytrace2(size[0], size[1],
+            [0.5+int(map_.size[1]/2), 0.5+int(map_.size[0]/2), 100],
+            1000, 180, -90, block_triangles, block_colors)
+    return np.asarray(image).astype(np.uint8)
 
 def print_ob(ob):
     for i in range(len(ob)):
@@ -154,27 +237,25 @@ class RogueEnv:
 def main():
     block_set = {}
     block_set["."] = Block(block_id=0, indicator=".", name="air", movable=True)
-    block_set["#"] = Block(block_id=1, indicator="#", name="stone", movable=False)
-    block_set["R"] = Block(block_id=2, indicator="R", name="red_tile", movable=True)
-    block_set["B"] = Block(block_id=3, indicator="B", name="blue_tile",
+    block_set["#"] = Block(block_id=1, indicator="#", name="stone", color=(127, 127, 127), movable=False)
+    block_set["R"] = Block(block_id=2, indicator="R", name="red_tile", block_type="tile", color=(255, 0, 0), movable=True)
+    block_set["B"] = Block(block_id=3, indicator="B", name="blue_tile", block_type="tile", color=(0, 0, 255),
             movable=True)
-    block_set["Y"] = Block(block_id=4, indicator="Y", name="yellow_tile",
+    block_set["Y"] = Block(block_id=4, indicator="Y", name="yellow_tile", block_type="tile", color=(255, 255, 0),
             movable=True)
-    block_set["G"] = Block(block_id=5, indicator="G", name="green_tile",
+    block_set["G"] = Block(block_id=5, indicator="G", name="green_tile", block_type="tile", color=(0, 255, 0),
             movable=True)
-
 
     map_str = [
-        "#########",
-        "#########",
-        "#########",
-        "###2.3###",
-        "####.####",
-        "####.####",
-        "###.01###",
-        "#########",
-        "#########",
-        "#########",
+        "#######",
+        "#2...3#",
+        "###.###",
+        "..#.#..",
+        "..#.#..",
+        "..#.#..",
+        "###.###",
+        "#..0.1#",
+        "#######",
     ]
     map_data, positions = load_map(block_set, map_str)
     map_ = Map(*map_data)
@@ -183,23 +264,41 @@ def main():
     action_set = [("move", 1), ("move", -1), ("turn", 1), ("turn", -1)]
 
     env = RogueEnv(action_set=action_set)
-    indicator = np.random.choice(("G", "Y"))
+    indicator = "Y"#np.random.choice(("G", "Y"))
     map_.set_block(positions[2], block_set["B"])
     map_.set_block(positions[3], block_set["R"])
     map_.set_block(positions[1], block_set[indicator])
-    env.reset(map_=map_, start_direction=np.asarray([-1,0]), start_position=np.asarray(positions[0]))
+    env.reset(map_=map_, start_direction=np.asarray([-1,0]),
+            start_position=np.asarray(positions[0]))
     print(env.agent_position)
     for step in range(5000):
         os.system("clear")
         env.print_map()
-        print(env.agent_direction)
-        ob = map_to_ob(map_, direction=env.agent_direction, pos=env.agent_position)
-        print_ob(ob)
-        hv = ob_to_hot_vectors(ob, block_type_num=6)
-        print_ob(hv)
+
+        if env.agent_direction[0] == -1 and env.agent_direction[1] == 0:
+            direction = 180
+        elif env.agent_direction[0] == 0 and env.agent_direction[1] == -1:
+            direction = 90
+        elif env.agent_direction[0] == 1 and env.agent_direction[1] == 0:
+            direction = 0
+        elif env.agent_direction[0] == 0 and env.agent_direction[1] == 1:
+            direction = 270
+
+        im = map_to_image((32, 32), map_, env.agent_position, direction)
+        sm.imsave("test"+"{0:03d}".format(step)+".png", im)
+
+        print(env.agent_position.dtype)
+        print(env.agent_direction.dtype)
+        topview = map_to_top_view_image((200, 200), map_)
+        sm.imsave("topview"+"{0:03d}".format(step)+".png", topview)
+
+        #ob = map_to_ob(map_, direction=env.agent_direction, pos=env.agent_position)
+        #print_ob(ob)
+        #hv = ob_to_hot_vectors(ob, block_type_num=6)
+        #print_ob(hv)
         action = random.randrange(len(action_set))
         env.step(action)
-        time.sleep(0.1)
+        #time.sleep(0.1)
         input()
     m = Map()
     m.print()

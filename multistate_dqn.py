@@ -19,7 +19,7 @@ def state_to_variable(state):
 """
 
 class DeepQNet:
-    def __init__(self, state_shape, action_num, image_num_per_state,
+    def __init__(self, gpu, state_shape, action_num, image_num_per_state,
             model,
             gamma=0.99, # discount factor
             replay_batch_size=32,
@@ -29,6 +29,7 @@ class DeepQNet:
             lr=0.00025,
             clipping=False # if True, ignore reward intensity
             ):
+        self.gpu = gpu
         print("initializing DQN...")
         self.action_num = action_num
         self.image_num_per_state = image_num_per_state
@@ -57,101 +58,62 @@ class DeepQNet:
 
     def calc_loss(self, state, state_dash, actions, rewards, done_list):
         assert(state.shape == state_dash.shape)
-        s = state.reshape((state.shape[0], reduce(lambda x, y: x*y, state.shape[1:]))).astype(np.float32)
-        s_dash = state_dash.reshape((state.shape[0], reduce(lambda x, y: x*y, state.shape[1:]))).astype(np.float32)
+        s = state.astype(np.float32)
         q = self.model.q_function(s)
+        selected_q = F.select_item(q, actions.astype(np.int32))
 
-        q_dash = self.model_target.q_function(s_dash)  # Q(s',*)
-        max_q_dash = np.asarray(list(map(np.max, q_dash.data)), dtype=np.float32) # max_a Q(s',a)
+        r = self.xp.sign(rewards) if self.clipping else rewards
+        s_dash = state_dash.astype(np.float32)
+        q_dash = self.model_target.q_function(s_dash) # Q(s',*)
+        max_q_dash = q_dash.data.max(axis=1) # max_a Q(s',a)
+        target = r + self.xp.logical_not(done_list).astype(np.float32)*self.gamma*max_q_dash
 
-        target = q.data.copy()
-        for i in range(self.replay_batch_size):
-            assert(self.replay_batch_size == len(done_list))
-            r = np.sign(rewards[i]) if self.clipping else rewards[i]
-            if done_list[i]:
-                discounted_sum = r
-            else:
-                discounted_sum = r + self.gamma * max_q_dash[i]
-            assert(self.replay_batch_size == len(actions))
-            target[i, actions[i]] = discounted_sum
-
-        loss = F.sum(F.huber_loss(Variable(target), q, delta=1.0)) #/ self.replay_batch_size
+        target = target.reshape((1,)+target.shape)
+        selected_q = F.reshape(selected_q, (1,)+selected_q.shape)
+        loss = F.sum(F.huber_loss(target, selected_q, delta=1.0)) #/ self.replay_batch_size
         return loss, q
 
-    def calc_loss_recurrent(self, frames, actions, rewards, done_list, size_list):
-        # TODO self.max_step -> max_step
-        s = Variable(frames.astype(np.float32))
+    def calc_loss_recurrent(self, state, state_dash, actions, rewards, done_list):
+        frames = F.swapaxes(state, 0, 1) # (Batch, FrameNum, FrameData) -> (FrameNum, Batch, FrameData)
+        for f in range(0, self.image_num_per_state-1):
+            self.model.q_function(frames[f])
+        q = self.model.q_function(frames[-1])
+        selected_q = F.select_item(q, actions.astype(np.int32))
 
-        self.model_target.reset_state() # Refresh model_target's state
-        self.model_target.q_function(s[0]) # Update target model initial state
+        r = self.xp.sign(rewards) if self.clipping else rewards
+        frames_dash = F.swapaxes(state_dash, 0, 1) # same for frames
+        self.model_target.reset_state()
+        for f in range(0, self.image_num_per_state-1):
+            self.model_target.q_function(frames_dash[f])
+        q_dash = self.model_target.q_function(frames_dash[-1])  # Q(s',*): shape is (batch_size, action_num)
+        max_q_dash = q_dash.data.max(axis=1) # max_a Q(s',a): shape is (batch_size,)
+        target = r + self.xp.logical_not(done_list).astype(np.float32)*self.gamma*max_q_dash
 
-        target_q = self.xp.zeros((self.max_step, self.replay_batch_size), dtype=np.float32)
-        selected_q_tuple = [None for _ in range(self.max_step)]
-
-        for frame in range(0, self.max_step):
-            q = self.model.q_function(s[frame])
-            q_dash = self.model_target.q_function(s[frame+1])  # Q(s',*): shape is (batch_size, action_num)
-            max_q_dash = q_dash.data.max(axis=1) # max_a Q(s',a): shape is (batch_size,)
-            if self.clipping:
-                rs = self.xp.sign(rewards[frame])
-            else:
-                rs = rewards[frame]
-            target_q[frame] = rs + self.xp.logical_not(done_list[frame]).astype(np.int)*(self.gamma*max_q_dash)
-            selected_q_tuple[frame] = F.select_item(q, actions[frame].astype(np.int))
-
-        enable = self.xp.broadcast_to(self.xp.arange(self.max_step), (self.replay_batch_size, self.max_step))
-        size_list = self.xp.expand_dims(cuda.to_gpu(size_list), -1)
-        enable = (enable < size_list).T
-
-        selected_q = F.concat(selected_q_tuple, axis=0)
-
-        # element-wise huber loss
-        huber_loss = F.huber_loss(
-                F.expand_dims(F.flatten(target_q), axis=1),
-                F.expand_dims(selected_q, axis=1), delta=1.0)
-        huber_loss = F.reshape(huber_loss, enable.shape)
-
-        zeros = self.xp.zeros(enable.shape, dtype=np.float32)
-        loss = F.sum(F.where(enable, huber_loss, zeros)) #/ self.replay_batch_size
-        #print("loss", loss.data)
-
-        return loss
+        target = target.reshape((1,)+target.shape)
+        selected_q = F.reshape(selected_q, (1,)+selected_q.shape)
+        loss = F.sum(F.huber_loss(target, selected_q, delta=1.0)) #/ self.replay_batch_size
+        return loss, q
 
     def experience_replay(self):
-        if self.model.is_reccurent():
-            self.model.push_state() # Save current state
-            replay_episodes = self.dataset.extract_episodes(self.replay_batch_size)
-            frame_shape = replay_episodes[0].frame_shape
-            frame_dtype = replay_episodes[0].frame_dtype
-            frames = self.xp.zeros((self.replay_batch_size, self.max_step+1)+frame_shape, dtype=frame_dtype)
-            actions = self.xp.zeros((self.replay_batch_size, self.max_step), dtype=np.uint8)
-            rewards = self.xp.zeros((self.replay_batch_size, self.max_step), dtype=np.float32)
-            done_list = self.xp.zeros((self.replay_batch_size, self.max_step), dtype=np.bool)
-            for i in range(self.replay_batch_size):
-                frames[i][:-1] = cuda.to_gpu(replay_episodes[i].frames)
-                actions[i] = cuda.to_gpu(replay_episodes[i].actions)
-                rewards[i] = cuda.to_gpu(replay_episodes[i].rewards)
-                done_list[i] = cuda.to_gpu(replay_episodes[i].done_list)
-
-            transpose_index = np.arange(len(frames.shape))
-            transpose_index[0] = 1
-            transpose_index[1] = 0
-            frames = frames.transpose(*transpose_index)
-            assert(frames.shape[0] == self.max_step+1 and frames.shape[1] == self.replay_batch_size)
-
-            size_list = np.asarray([episode.size for episode in replay_episodes])
-
-            self.optimizer.zero_grads()
-            loss = self.calc_loss_recurrent(frames, actions.T, rewards.T, done_list.T, size_list)
-            loss.backward()
-            #print("loss grad is", loss.grad)
-            self.optimizer.update()
-            self.model.pop_state() # Load current state
-        else: # normal DQN
-            state, state_dash, actions, rewards, done_list = \
-                    self.dataset.extract_batch(self.replay_batch_size, self.image_num_per_state)
+        state, state_dash, actions, rewards, done_list = \
+                self.dataset.extract_batch(self.replay_batch_size, self.image_num_per_state)
+        state = state.astype(np.float32)/255.0
+        state_dash = state_dash.astype(np.float32)/255.0
+        if self.gpu >= 0:
             state = cuda.to_gpu(state)
             state_dash = cuda.to_gpu(state_dash)
+            actions = cuda.to_gpu(actions)
+            rewards = cuda.to_gpu(rewards)
+            done_list = cuda.to_gpu(done_list)
+
+        if self.model.is_reccurent():
+            self.model.push_state() # Save current episode state
+            self.optimizer.zero_grads()
+            loss, q = self.calc_loss_recurrent(state, state_dash, actions, rewards, done_list)
+            loss.backward()
+            self.optimizer.update()
+            self.model.pop_state() # Load current episode state
+        else: # normal DQN
             self.optimizer.zero_grads()
             loss, _ = self.calc_loss(state, state_dash, actions, rewards, done_list)
             loss.backward()
@@ -169,7 +131,7 @@ class DeepQNet:
             state[:-1] = self.dataset.get_latest_frames(self.image_num_per_state-1)
             state[-1] = image
             state = np.concatenate(state, axis=0)
-            s = Variable(self.xp.array([state]).astype(np.float32))
+            s = Variable(self.xp.array([state]).astype(np.float32))/255.0
         q = self.model.q_function(s).data[0]
 
         if np.random.rand() < eps:

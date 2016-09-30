@@ -15,14 +15,16 @@ class RMQN(Chain):
     def __init__(self, input_num, action_num, max_buff_size, m, e):
         print("RMQN Model", input_num, action_num)
         super(RMQN, self).__init__(
+            cnn1=L.Convolution2D(in_channels=3, out_channels=32, ksize=4, stride=2, pad=1),
+            cnn2=L.Convolution2D(in_channels=32, out_channels=64, ksize=4, stride=2, pad=1),
             memory_module = MemoryModule(max_buff_size=max_buff_size, m=m, e=e),
-            encoder=L.Linear(in_size=input_num, out_size=e),
             context=L.LSTM(in_size=e, out_size=m),
             quality=QualityPhi(m, action_num),
         )
 
     def q_function(self, state):
-        e = self.encoder(state)
+        e = F.relu(self.cnn1(state))
+        e = F.relu(self.cnn2(e))
         self.memory_module.write(e)
         h = self.context(e)
         o, p = self.memory_module.read(h)

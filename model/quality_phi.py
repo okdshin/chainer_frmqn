@@ -9,10 +9,10 @@ import chainer.links as L
 from chainer.training import extensions
 
 class QualityPhi(Chain):
-    def __init__(self, input_dim, action_num):
+    def __init__(self, m, action_num):
         super(QualityPhi, self).__init__(
-            fch=L.Linear(nobias=True, in_size=input_dim, out_size=input_dim),
-            fcg=L.Linear(nobias=True, in_size=input_dim, out_size=action_num),
+            fch=L.Linear(nobias=True, in_size=m, out_size=m),
+            fcg=L.Linear(nobias=True, in_size=m, out_size=action_num),
         )
 
     def __call__(self, h, o):

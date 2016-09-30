@@ -12,13 +12,18 @@ class DRQN(Chain):
     def __init__(self, input_num, action_num):
         print("DRQN Model", input_num, action_num)
         super(DRQN, self).__init__(
-            fc1=L.Linear(input_num, 256),
+            cnn1=L.Convolution2D(in_channels=3, out_channels=32, ksize=4, stride=2, pad=1),
+            cnn2=L.Convolution2D(in_channels=32, out_channels=64, ksize=4, stride=2, pad=1),
+            fc1=L.Linear(4096, 256),
             lstm=L.LSTM(256, 256),
             fc2=L.Linear(256, action_num),
         )
 
     def q_function(self, state):
-        h = F.relu(self.fc1(state))
+        #state = F.reshape(state, (state.shape[0], 36, 32, 32))
+        h = F.relu(self.cnn1(state))
+        h = F.relu(self.cnn2(h))
+        h = F.relu(self.fc1(h))
         h = F.relu(self.lstm(h))
         h = self.fc2(h)
         return h

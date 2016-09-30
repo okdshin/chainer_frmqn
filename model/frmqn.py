@@ -7,27 +7,32 @@ from chainer import Link, Chain, ChainList
 import chainer.functions as F
 import chainer.links as L
 from chainer.training import extensions
+from functools import reduce
 
 from .quality_phi import QualityPhi
 from .memory_module import MemoryModule
 
 class FRMQN(Chain):
     def __init__(self, input_num, action_num, max_buff_size, m, e):
-        assert(m == e)
         print("FRMQN Model", input_num, action_num)
         super(FRMQN, self).__init__(
+            cnn1=L.Convolution2D(in_channels=3, out_channels=32, ksize=4, stride=2, pad=1),
+            cnn2=L.Convolution2D(in_channels=32, out_channels=64, ksize=4, stride=2, pad=1),
             memory_module = MemoryModule(max_buff_size=max_buff_size, m=m, e=e),
-            encoder=L.Linear(in_size=input_num, out_size=e),
             context=L.LSTM(in_size=(e+m), out_size=m),
             quality=QualityPhi(m, action_num),
         )
+        self.m = m
         self.o = None
 
     def q_function(self, state):
-        e = self.encoder(state)
+        batch_size = state.shape[0]
+        e = F.relu(self.cnn1(state))
+        e = F.relu(self.cnn2(e))
         self.memory_module.write(e)
         if self.o is None:
-            self.o = self.xp.zeros(e.shape, np.float32)
+            self.o = self.xp.zeros((batch_size, self.m), np.float32)
+        e = F.reshape(e, (batch_size, reduce(lambda x,y: x*y, e.shape[1:])))
         h = self.context(F.concat((e, self.o)))
         self.o, p = self.memory_module.read(h)
         q = self.quality(h, self.o)
@@ -38,9 +43,6 @@ class FRMQN(Chain):
 
 
     def is_reccurent(self):
-        return True
-
-    def has_memory_module(self):
         return True
 
     def reset_state(self):
