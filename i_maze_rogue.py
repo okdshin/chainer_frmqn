@@ -246,7 +246,7 @@ def main():
     parser.add_argument("-y", type=int, default=0,
             help="OK?, default:0")
     parser.add_argument("-framehistnum", type=int, default=12,
-            help="OK?, default:12")
+            help="frame history num, default:12")
     args = parser.parse_args()
 
     print(args)
